@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Model weights (too large for GitHub — train locally)
+models/
+*.pth
+
+# Generated outputs
+confusion_matrix.png
+*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / env
+.env
+*.env
+
+# Jupyter
+.ipynb_checkpoints/

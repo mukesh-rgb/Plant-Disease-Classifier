@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PlantDoc AI — Disease Detector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Animated background ────────────────────────────────── */
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      background: #0a1a0f;
+      overflow-x: hidden;
+      color: #fff;
+    }
+
+    /* Floating orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.25;
+      pointer-events: none;
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+    .orb1 { width: 500px; height: 500px; background: #1a7a3c; top: -100px; left: -100px; animation-delay: 0s; }
+    .orb2 { width: 400px; height: 400px; background: #0d5c2a; top: 50%;  right: -80px;  animation-delay: -6s; }
+    .orb3 { width: 300px; height: 300px; background: #4caf50; bottom: -80px; left: 30%;  animation-delay: -12s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(40px, 30px) scale(1.1); }
+    }
+
+    /* Animated leaf particles */
+    .leaves { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    .leaf {
+      position: absolute;
+      font-size: 1.4rem;
+      opacity: 0.07;
+      animation: fall linear infinite;
+    }
+    @keyframes fall {
+      0%   { transform: translateY(-60px) rotate(0deg);   opacity: 0; }
+      10%  { opacity: 0.07; }
+      90%  { opacity: 0.07; }
+      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 60px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 99px;
+      padding: 6px 18px 6px 10px;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      color: #81c784;
+      text-transform: uppercase;
+    }
+    .logo-dot { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1; transform:scale(1);} 50%{opacity:0.5; transform:scale(1.4);} }
+
+    header h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 0%, #81c784 50%, #4caf50 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+    }
+    header p {
+      color: rgba(255,255,255,0.5);
+      margin-top: 10px;
+      font-size: 0.95rem;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .badge {
+      background: rgba(76,175,80,0.12);
+      border: 1px solid rgba(76,175,80,0.25);
+      color: #81c784;
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    /* ── Main card ───────────────────────────────────────────── */
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    /* ── Drop zone ───────────────────────────────────────────── */
+    #drop-zone {
+      border: 2px dashed rgba(76,175,80,0.35);
+      border-radius: 16px;
+      padding: 44px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(76,175,80,0.04);
+      position: relative;
+      overflow: hidden;
+    }
+    #drop-zone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(76,175,80,0.08) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #drop-zone:hover::before, #drop-zone.dragover::before { opacity: 1; }
+    #drop-zone:hover, #drop-zone.dragover {
+      border-color: rgba(76,175,80,0.7);
+      background: rgba(76,175,80,0.07);
+    }
+    .upload-icon {
+      width: 64px; height: 64px;
+      background: rgba(76,175,80,0.12);
+      border: 1px solid rgba(76,175,80,0.25);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      margin-bottom: 14px;
+      transition: transform 0.3s;
+    }
+    #drop-zone:hover .upload-icon { transform: scale(1.08) translateY(-2px); }
+    #drop-zone h3 { font-size: 1rem; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    #drop-zone p  { font-size: 0.85rem; color: rgba(255,255,255,0.4); }
+    #drop-zone p span { color: #4caf50; font-weight: 600; }
+    #file-input { display: none; }
+
+    /* ── Preview ─────────────────────────────────────────────── */
+    #preview-wrap { display: none; text-align: center; }
+    #preview {
+      max-width: 100%;
+      max-height: 280px;
+      border-radius: 14px;
+      object-fit: contain;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    #change-btn {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.35);
+      cursor: pointer;
+      text-decoration: underline;
+      transition: color 0.2s;
+    }
+    #change-btn:hover { color: rgba(255,255,255,0.7); }
+
+    /* ── Button ──────────────────────────────────────────────── */
+    #predict-btn {
+      display: none;
+      width: 100%;
+      margin-top: 20px;
+      padding: 15px;
+      background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: all 0.3s;
+      box-shadow: 0 4px 24px rgba(76,175,80,0.35);
+      position: relative;
+      overflow: hidden;
+    }
+    #predict-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #predict-btn:hover::after { opacity: 1; }
+    #predict-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(76,175,80,0.45); }
+    #predict-btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); transform: none; box-shadow: none; cursor: not-allowed; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2.5px solid rgba(255,255,255,0.25);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ─────────────────────────────────────────────── */
+    #result-box { display: none; margin-top: 24px; animation: fadeUp 0.5s ease; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+    .result-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: rgba(76,175,80,0.08);
+      border: 1px solid rgba(76,175,80,0.2);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .result-emoji {
+      font-size: 2.2rem;
+      flex-shrink: 0;
+      line-height: 1;
+      margin-top: 2px;
+    }
+    .result-text .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #4caf50; font-weight: 600; margin-bottom: 4px; }
+    .result-text .disease { font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1.2; }
+    .conf-pill {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .conf-high { background: rgba(76,175,80,0.2);  color: #81c784; border: 1px solid rgba(76,175,80,0.3); }
+    .conf-mid  { background: rgba(255,193,7,0.15); color: #ffd54f; border: 1px solid rgba(255,193,7,0.25); }
+    .conf-low  { background: rgba(244,67,54,0.15); color: #ef9a9a; border: 1px solid rgba(244,67,54,0.25); }
+
+    .warn-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      background: rgba(255,193,7,0.08);
+      border: 1px solid rgba(255,193,7,0.2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 0.85rem;
+      color: #ffd54f;
+    }
+
+    .remedy-section {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .remedy-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .remedy-card .r-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .remedy-card .r-body { font-size: 0.87rem; color: rgba(255,255,255,0.72); line-height: 1.55; }
+    .remedy-card.cause   { border-color: rgba(100,181,246,0.2); }
+    .remedy-card.cause .r-title   { color: #90caf9; }
+    .remedy-card.symptoms { border-color: rgba(255,183,77,0.2); }
+    .remedy-card.symptoms .r-title { color: #ffcc80; }
+    .remedy-card.treatment { border-color: rgba(129,199,132,0.2); }
+    .remedy-card.treatment .r-title { color: #a5d6a7; }
+    .remedy-card.prevention { border-color: rgba(206,147,216,0.2); }
+    .remedy-card.prevention .r-title { color: #ce93d8; }
+
+    .treatment-steps { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    .treatment-steps li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 0.87rem;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.5;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 20px; height: 20px;
+      background: rgba(76,175,80,0.2);
+      border: 1px solid rgba(76,175,80,0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #81c784;
+      margin-top: 1px;
+    }
+
+    .severity-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+    .sev-high { background: rgba(244,67,54,0.15); color: #ef9a9a; border: 1px solid rgba(244,67,54,0.25); }
+    .sev-medium { background: rgba(255,193,7,0.12); color: #ffd54f; border: 1px solid rgba(255,193,7,0.2); }
+    .sev-low  { background: rgba(76,175,80,0.12); color: #a5d6a7; border: 1px solid rgba(76,175,80,0.2); }
+    .sev-none { background: rgba(76,175,80,0.15); color: #81c784; border: 1px solid rgba(76,175,80,0.25); }
+
+    .top3-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.35);
+      font-weight: 600;
+      margin: 16px 0 10px;
+    }
+    .bar-row { margin-bottom: 10px; }
+    .bar-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 5px;
+    }
+    .bar-track {
+      height: 6px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #2e7d32, #66bb6a);
+      transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    }
+    .bar-fill.second { background: linear-gradient(90deg, #1b5e20, #43a047); }
+    .bar-fill.third  { background: linear-gradient(90deg, #0a3d17, #2e7d32); }
+
+    /* ── Download button ────────────────────────────────────── */
+    #download-btn {
+      width: 100%;
+      margin-top: 14px;
+      padding: 12px;
+      background: transparent;
+      border: 1.5px solid rgba(76,175,80,0.4);
+      border-radius: 12px;
+      color: #81c784;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s;
+      letter-spacing: 0.02em;
+    }
+    #download-btn:hover {
+      background: rgba(76,175,80,0.08);
+      border-color: rgba(76,175,80,0.7);
+      color: #a5d6a7;
+    }
+    #download-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Error ───────────────────────────────────────────────── */
+    #error-box {
+      display: none;
+      margin-top: 16px;
+      background: rgba(244,67,54,0.08);
+      border: 1px solid rgba(244,67,54,0.2);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: #ef9a9a;
+      font-size: 0.88rem;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      margin-top: 40px;
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.2);
+      text-align: center;
+    }
+    footer span { color: rgba(76,175,80,0.6); }
+  </style>
+</head>
+<body>
+
+<!-- Background orbs -->
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<!-- Falling leaves -->
+<div class="leaves" id="leaves"></div>
+
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      AI Powered · Live
+    </div>
+    <h1>PlantDoc AI</h1>
+    <p>Upload a leaf photo for instant disease diagnosis</p>
+    <div class="badges">
+      <span class="badge">🌿 Cashew</span>
+      <span class="badge">🌱 Cassava</span>
+      <span class="badge">🌽 Maize</span>
+      <span class="badge">🍅 Tomato</span>
+      <span class="badge">22 Diseases</span>
+      <span class="badge">85.7% Accuracy</span>
+    </div>
+  </header>
+
+  <!-- Card -->
+  <div class="card">
+
+    <!-- Drop zone -->
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">🍃</div>
+      <h3>Drop your leaf photo here</h3>
+      <p style="margin-top:4px;">or <span>click to browse</span> your files</p>
+      <p style="margin-top:10px; font-size:0.78rem;">JPG, PNG, WEBP supported</p>
+    </div>
+    <input type="file" id="file-input" accept="image/*"/>
+
+    <!-- Preview -->
+    <div id="preview-wrap">
+      <img id="preview" src="" alt="Leaf preview"/>
+      <div id="change-btn" onclick="reset()">&#8592; Choose a different photo</div>
+    </div>
+
+    <!-- Predict button -->
+    <button id="predict-btn" onclick="runPredict()">Diagnose Disease</button>
+
+    <!-- Error -->
+    <div id="error-box"></div>
+
+    <!-- Results -->
+    <div id="result-box">
+      <div class="result-header">
+        <div class="result-emoji" id="res-emoji">🔬</div>
+        <div class="result-text">
+          <div class="label">Diagnosis Result</div>
+          <div class="disease" id="res-disease">—</div>
+          <span class="conf-pill" id="res-conf-pill">—</span>
+        </div>
+      </div>
+
+      <div class="warn-box" id="low-conf-warn" style="display:none;">
+        ⚠️ Low confidence — model is unsure. Try a clearer, closer photo of the leaf.
+      </div>
+
+      <!-- Remedy sections -->
+      <div class="remedy-section" id="remedy-section"></div>
+
+      <div class="top3-title">Top 3 Possibilities</div>
+      <div id="top3-bars"></div>
+
+      <!-- Download button -->
+      <button id="download-btn" onclick="downloadReport()">
+        ⬇ Download PDF Report
+      </button>
+    </div>
+
+  </div>
+
+  <footer>
+    Powered by <span>MobileNetV2</span> · <span>PyTorch</span> · <span>Flask</span>
+  </footer>
+</div>
+
+<script>
+  // Generate falling leaves
+  const leavesContainer = document.getElementById('leaves');
+  const leafEmojis = ['🍃','🌿','🍀','☘️','🌱'];
+  for (let i = 0; i < 18; i++) {
+    const leaf = document.createElement('div');
+    leaf.className = 'leaf';
+    leaf.textContent = leafEmojis[Math.floor(Math.random() * leafEmojis.length)];
+    leaf.style.left = Math.random() * 100 + 'vw';
+    leaf.style.animationDuration = (12 + Math.random() * 20) + 's';
+    leaf.style.animationDelay = -(Math.random() * 30) + 's';
+    leaf.style.fontSize = (0.9 + Math.random() * 1.4) + 'rem';
+    leavesContainer.appendChild(leaf);
+  }
+
+  const dropZone   = document.getElementById('drop-zone');
+  const fileInput  = document.getElementById('file-input');
+  const previewWrap= document.getElementById('preview-wrap');
+  const previewImg = document.getElementById('preview');
+  const predictBtn = document.getElementById('predict-btn');
+  const resultBox  = document.getElementById('result-box');
+  const errorBox   = document.getElementById('error-box');
+  let selectedFile = null;
+
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      dropZone.style.display    = 'none';
+      previewWrap.style.display = 'block';
+      predictBtn.style.display  = 'block';
+      resultBox.style.display   = 'none';
+      errorBox.style.display    = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function downloadReport() {
+    if (!selectedFile) return;
+    const btn = document.getElementById('download-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating PDF...';
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      const res  = await fetch('/report', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Failed to generate report');
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'PlantDoc_Report.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(err) {
+      alert('Error: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⬇ Download PDF Report';
+    }
+  }
+
+  function reset() {
+    selectedFile = null; fileInput.value = '';
+    dropZone.style.display    = 'block';
+    previewWrap.style.display = 'none';
+    predictBtn.style.display  = 'none';
+    resultBox.style.display   = 'none';
+    errorBox.style.display    = 'none';
+  }
+
+  function getDiseaseEmoji(name) {
+    if (name.includes('healthy')) return '✅';
+    if (name.includes('blight'))  return '🟤';
+    if (name.includes('mosaic') || name.includes('virus')) return '🔴';
+    if (name.includes('mite') || name.includes('armyworm') || name.includes('beetle') || name.includes('grasshop')) return '🐛';
+    if (name.includes('curl'))    return '🌀';
+    if (name.includes('wilt'))    return '🥀';
+    if (name.includes('spot'))    return '🟡';
+    return '🔬';
+  }
+
+  async function runPredict() {
+    if (!selectedFile) return;
+    predictBtn.disabled  = true;
+    predictBtn.innerHTML = '<span class="spinner"></span>Analysing with AI...';
+    resultBox.style.display = 'none';
+    errorBox.style.display  = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res  = await fetch('/predict', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const conf = data.top.confidence;
+      const info = data.info;
+      document.getElementById('res-disease').textContent = data.top.disease;
+      document.getElementById('res-emoji').textContent   = getDiseaseEmoji(data.top.disease.toLowerCase());
+
+      const pill = document.getElementById('res-conf-pill');
+      pill.textContent = `${conf}% confidence`;
+      pill.className   = 'conf-pill ' + (conf >= 75 ? 'conf-high' : conf >= 55 ? 'conf-mid' : 'conf-low');
+
+      document.getElementById('low-conf-warn').style.display = data.low_conf ? 'flex' : 'none';
+
+      // Severity badge
+      const sevClass = { high:'sev-high', medium:'sev-medium', low:'sev-low', none:'sev-none' }[info.severity] || 'sev-low';
+      const sevLabel = info.severity === 'none' ? 'Healthy' : info.severity.charAt(0).toUpperCase() + info.severity.slice(1) + ' Severity';
+
+      // Treatment steps HTML
+      const stepsHTML = info.treatment.map((step, i) =>
+        `<li><span class="step-num">${i+1}</span><span>${step}</span></li>`
+      ).join('');
+
+      document.getElementById('remedy-section').innerHTML = `
+        <div class="remedy-card cause">
+          <div class="r-title">🔬 Cause
+            <span class="severity-badge ${sevClass}">${sevLabel}</span>
+          </div>
+          <div class="r-body">${info.cause}</div>
+        </div>
+        <div class="remedy-card symptoms">
+          <div class="r-title">🔍 Symptoms</div>
+          <div class="r-body">${info.symptoms}</div>
+        </div>
+        <div class="remedy-card treatment">
+          <div class="r-title">💊 Treatment Steps</div>
+          <ul class="treatment-steps">${stepsHTML}</ul>
+        </div>
+        <div class="remedy-card prevention">
+          <div class="r-title">🛡️ Prevention</div>
+          <div class="r-body">${info.prevention}</div>
+        </div>
+      `;
+
+      const barsDiv = document.getElementById('top3-bars');
+      barsDiv.innerHTML = '';
+      const fillClasses = ['', 'second', 'third'];
+      data.top3.forEach((item, i) => {
+        barsDiv.innerHTML += `
+          <div class="bar-row">
+            <div class="bar-meta">
+              <span>${item.disease}</span>
+              <span style="font-weight:600; color:${i===0?'#81c784':'rgba(255,255,255,0.45)'};">${item.confidence}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill ${fillClasses[i]}" style="width:0%" data-w="${item.confidence}"></div>
+            </div>
+          </div>`;
+      });
+
+      resultBox.style.display = 'block';
+
+      // Animate bars after render
+      setTimeout(() => {
+        document.querySelectorAll('.bar-fill').forEach(b => b.style.width = b.dataset.w + '%');
+      }, 80);
+
+    } catch(err) {
+      errorBox.textContent   = '⚠ Error: ' + err.message;
+      errorBox.style.display = 'block';
+    } finally {
+      predictBtn.disabled  = false;
+      predictBtn.innerHTML = 'Diagnose Disease';
+    }
+  }
+</script>
+</body>
+</html>
