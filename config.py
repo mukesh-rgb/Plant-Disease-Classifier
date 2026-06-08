@@ -1,30 +1,35 @@
 from pathlib import Path
+import os
 
-# --- Paths ---
-DATASET_PATH   = Path(r"C:\Users\manit\Desktop\cassssssss")
-PROJECT_PATH   = Path(r"C:\Users\manit\Desktop\plant-disease-classifier")
+# Project root = folder where this file lives (works locally AND on HF Spaces)
+PROJECT_PATH    = Path(__file__).parent
 MODEL_SAVE_PATH = PROJECT_PATH / "models"
 
+# Dataset path — only needed for training, not for the web app
+# Change this to your local dataset path when training
+DATASET_PATH = Path(os.environ.get(
+    "DATASET_PATH",
+    r"C:\Users\manit\Desktop\cassssssss"   # local default
+))
+
 # --- Image settings ---
-IMG_SIZE = 224          # MobileNetV2 needs 224x224 pixels
+IMG_SIZE = 224
 
 # --- Training settings ---
-BATCH_SIZE    = 16      # 4GB VRAM — keep at 16 to avoid OOM
-NUM_EPOCHS    = 20      # how many full passes through dataset
-LEARNING_RATE = 0.001   # how fast the model learns
+BATCH_SIZE    = 16
+NUM_EPOCHS    = 20
+LEARNING_RATE = 0.001
 
 # --- Dataset split ---
-TRAIN_SPLIT = 0.70      # 70% for training
-VAL_SPLIT   = 0.15      # 15% for checking during training
-TEST_SPLIT  = 0.15      # 15% for final grading (never seen during training)
+TRAIN_SPLIT = 0.70
+VAL_SPLIT   = 0.15
+TEST_SPLIT  = 0.15
 
 # --- Model ---
-NUM_CLASSES  = 22       # 22 disease/healthy folders
-NUM_WORKERS  = 0        # 0 = main process only (safer on Windows)
+NUM_CLASSES  = 22
+NUM_WORKERS  = 0
 
 # --- Fine-tune mode ---
-# Set FINETUNE = True to resume from best_model.pth and improve weak classes
-# Uses Focal Loss + class weights + very low LR
 FINETUNE        = True
 FINETUNE_EPOCHS = 15
-FINETUNE_LR     = 1e-5  # 100x lower than initial LR — gentle nudge, not relearning
+FINETUNE_LR     = 1e-5

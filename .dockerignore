@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+*.pdf
+confusion_matrix.png
+models/resume_checkpoint.pth
+models/finetune_checkpoint.pth
