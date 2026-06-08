@@ -10,9 +10,9 @@ venv/
 env/
 .venv/
 
-# Model weights (too large for GitHub — train locally)
-models/
-*.pth
+# Keep only best model — exclude large checkpoints
+models/resume_checkpoint.pth
+models/finetune_checkpoint.pth
 
 # Generated outputs
 confusion_matrix.png
