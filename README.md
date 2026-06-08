@@ -1,9 +1,20 @@
+---
+title: PlantDoc AI
+emoji: 🌿
+colorFrom: green
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # PlantDoc AI — Plant Disease Classifier
 
 A deep learning web application that detects plant diseases from leaf photos.
 Upload a photo of a leaf → get an instant AI diagnosis with treatment recommendations.
 
 **85.7% accuracy** across 22 disease classes and 4 crops (Cashew, Cassava, Maize, Tomato).
+
+> **Live Demo:** [huggingface.co/spaces/Mukesh55555/Plant-Disease-Classifier](https://huggingface.co/spaces/Mukesh55555/Plant-Disease-Classifier)
 
 ---
 
@@ -217,6 +228,25 @@ Softmax → Disease Class
 | Data Processing | scikit-learn, Pillow |
 | Visualisation | Matplotlib, Seaborn |
 | Frontend | Vanilla HTML/CSS/JS |
+
+---
+
+## Deployment
+
+The app is deployed for free on **Hugging Face Spaces** using Docker.
+
+| Item | Detail |
+|------|--------|
+| Platform | Hugging Face Spaces (Docker SDK) |
+| Live URL | https://huggingface.co/spaces/Mukesh55555/Plant-Disease-Classifier |
+| Hardware | CPU (free tier) |
+| Port | 7860 (HF Spaces standard) |
+
+To deploy your own copy:
+1. Fork this repo
+2. Create a new Hugging Face Space → Docker SDK
+3. Push all files including `models/best_model.pth`
+4. HF Spaces builds and runs the container automatically
 
 ---
 

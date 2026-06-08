@@ -564,7 +564,7 @@ def download_report():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))   # HF Spaces sets PORT=7860
+    port = int(os.environ.get("PORT", 7860))
     print(f"Model loaded on device: {device}")
     print(f"Open http://localhost:{port} in your browser\n")
     app.run(debug=False, host="0.0.0.0", port=port)
